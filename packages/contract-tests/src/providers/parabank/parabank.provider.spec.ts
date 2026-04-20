@@ -1,4 +1,5 @@
 import path from "path";
+import type { Request, Response, NextFunction } from "express";
 import { Verifier } from "@pact-foundation/pact";
 
 const PARABANK_BASE_URL = process.env.PARABANK_BASE_URL ?? "http://localhost:3000/parabank/";
@@ -143,6 +144,10 @@ describe("ParaBank — Pact provider verification", () => {
         providerVersionBranch: process.env.GIT_BRANCH ?? "main",
         enablePending: true,
         stateHandlers: providerStateHandlers,
+        requestFilter: (req: Request, _res: Response, next: NextFunction) => {
+          console.log(`[proxy] ${req.method} ${req.path}`, JSON.stringify(req.body ?? ""));
+          next();
+        },
         logLevel: "debug" as const,
       }
     : {
@@ -153,6 +158,10 @@ describe("ParaBank — Pact provider verification", () => {
           path.resolve(__dirname, "../../../pacts/reporting-service-parabank.json"),
         ],
         stateHandlers: providerStateHandlers,
+        requestFilter: (req: Request, _res: Response, next: NextFunction) => {
+          console.log(`[proxy] ${req.method} ${req.path}`, JSON.stringify(req.body ?? ""));
+          next();
+        },
         logLevel: "debug" as const,
       };
 
