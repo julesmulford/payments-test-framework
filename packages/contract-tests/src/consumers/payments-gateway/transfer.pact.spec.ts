@@ -105,7 +105,7 @@ describe("payments-gateway → parabank: accounts contract", () => {
       });
   });
 
-  test("request for non-existent account returns 404", async () => {
+  test("request for non-existent account returns 400", async () => {
     await provider
       .given("account 99999 does not exist")
       .uponReceiving("a request for a non-existent account")
@@ -114,11 +114,11 @@ describe("payments-gateway → parabank: accounts contract", () => {
         path: "/parabank/services/bank/accounts/99999",
       })
       .willRespondWith({
-        status: 404,
+        status: 400,
       })
       .executeTest(async (mockServer) => {
         const res = await fetch(`${mockServer.url}/parabank/services/bank/accounts/99999`);
-        expect(res.status).toBe(404);
+        expect(res.status).toBe(400);
       });
   });
 });

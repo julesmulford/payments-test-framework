@@ -1,5 +1,4 @@
 import path from "path";
-import type { Request, Response, NextFunction } from "express";
 import { Verifier } from "@pact-foundation/pact";
 
 // PARABANK_BASE_URL includes the /parabank context path, used for state handler fetch calls.
@@ -143,11 +142,8 @@ describe("ParaBank — Pact provider verification", () => {
         providerVersionBranch: process.env.GIT_BRANCH ?? "main",
         enablePending: true,
         stateHandlers: providerStateHandlers,
-        requestFilter: (req: Request, _res: Response, next: NextFunction) => {
-          console.log(`[proxy] ${req.method} ${req.path}`, JSON.stringify(req.body ?? ""));
-          next();
-        },
-        logLevel: "debug" as const,
+        customProviderHeaders: ["Accept: application/json"],
+        logLevel: "warn" as const,
       }
     : {
         provider: "parabank",
@@ -157,11 +153,8 @@ describe("ParaBank — Pact provider verification", () => {
           path.resolve(__dirname, "../../../pacts/reporting-service-parabank.json"),
         ],
         stateHandlers: providerStateHandlers,
-        requestFilter: (req: Request, _res: Response, next: NextFunction) => {
-          console.log(`[proxy] ${req.method} ${req.path}`, JSON.stringify(req.body ?? ""));
-          next();
-        },
-        logLevel: "debug" as const,
+        customProviderHeaders: ["Accept: application/json"],
+        logLevel: "warn" as const,
       };
 
   test("verifies all consumer contracts", async () => {
