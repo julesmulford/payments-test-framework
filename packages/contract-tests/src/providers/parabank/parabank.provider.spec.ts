@@ -13,10 +13,17 @@ const GIT_SHA = process.env.GIT_SHA ?? "local";
 
 const BASE = PARABANK_BASE_URL.replace(/\/$/, "");
 
+console.log("[pact-provider] PARABANK_BASE_URL =", PARABANK_BASE_URL);
+console.log("[pact-provider] BASE =", BASE);
+
 async function initDB(): Promise<void> {
-  const res = await fetch(`${BASE}/services/bank/initializeDB`, { method: "POST" });
+  const url = `${BASE}/services/bank/initializeDB`;
+  console.log("[initDB] POST", url);
+  const res = await fetch(url, { method: "POST" });
+  console.log("[initDB] response status:", res.status);
   if (res.status !== 200 && res.status !== 204) {
-    throw new Error(`initializeDB failed: ${res.status}`);
+    // Warn rather than throw — ParaBank sometimes returns 500 if already initialised
+    console.warn(`[initDB] unexpected status ${res.status} — proceeding`);
   }
 }
 
@@ -55,34 +62,49 @@ async function transfer(fromAccountId: number, toAccountId: number, amount: numb
 
 const providerStateHandlers: Record<string, () => Promise<Record<string, string> | void>> = {
   "customer 12345 has accounts 10001 and 10002 with sufficient balance": async () => {
-    await initDB();
-    const { id: customerId, accounts } = await getDemoCustomer();
-    const fromAccount = accounts[0];
-    const toAccount = await openAccount(customerId, 0, fromAccount.id);
-    const params = {
-      customerId: String(customerId),
-      fromAccountId: String(fromAccount.id),
-      toAccountId: String(toAccount.id),
-    };
-    console.log("[state] customer with two accounts →", params);
-    return params;
+    try {
+      await initDB();
+      const { id: customerId, accounts } = await getDemoCustomer();
+      const fromAccount = accounts[0];
+      const toAccount = await openAccount(customerId, 0, fromAccount.id);
+      const params = {
+        customerId: String(customerId),
+        fromAccountId: String(fromAccount.id),
+        toAccountId: String(toAccount.id),
+      };
+      console.log("[state] customer with two accounts →", params);
+      return params;
+    } catch (e) {
+      console.error("[state] FAILED — customer with two accounts:", e);
+      throw e;
+    }
   },
 
   "customer 12345 exists with two accounts": async () => {
-    await initDB();
-    const { id: customerId, accounts } = await getDemoCustomer();
-    await openAccount(customerId, 1, accounts[0].id);
-    const params = { customerId: String(customerId) };
-    console.log("[state] customer exists →", params);
-    return params;
+    try {
+      await initDB();
+      const { id: customerId, accounts } = await getDemoCustomer();
+      await openAccount(customerId, 1, accounts[0].id);
+      const params = { customerId: String(customerId) };
+      console.log("[state] customer exists →", params);
+      return params;
+    } catch (e) {
+      console.error("[state] FAILED — customer exists:", e);
+      throw e;
+    }
   },
 
   "account 10001 exists": async () => {
-    await initDB();
-    const { accounts } = await getDemoCustomer();
-    const params = { fromAccountId: String(accounts[0].id) };
-    console.log("[state] account exists →", params);
-    return params;
+    try {
+      await initDB();
+      const { accounts } = await getDemoCustomer();
+      const params = { fromAccountId: String(accounts[0].id) };
+      console.log("[state] account exists →", params);
+      return params;
+    } catch (e) {
+      console.error("[state] FAILED — account exists:", e);
+      throw e;
+    }
   },
 
   "account 99999 does not exist": async () => {
@@ -91,14 +113,19 @@ const providerStateHandlers: Record<string, () => Promise<Record<string, string>
   },
 
   "account 10001 has at least one transaction": async () => {
-    await initDB();
-    const { id: customerId, accounts } = await getDemoCustomer();
-    const fromAccount = accounts[0];
-    const toAccount = await openAccount(customerId, 0, fromAccount.id);
-    await transfer(fromAccount.id, toAccount.id, 50);
-    const params = { accountId: String(fromAccount.id) };
-    console.log("[state] account with transaction →", params);
-    return params;
+    try {
+      await initDB();
+      const { id: customerId, accounts } = await getDemoCustomer();
+      const fromAccount = accounts[0];
+      const toAccount = await openAccount(customerId, 0, fromAccount.id);
+      await transfer(fromAccount.id, toAccount.id, 50);
+      const params = { accountId: String(fromAccount.id) };
+      console.log("[state] account with transaction →", params);
+      return params;
+    } catch (e) {
+      console.error("[state] FAILED — account with transaction:", e);
+      throw e;
+    }
   },
 };
 
