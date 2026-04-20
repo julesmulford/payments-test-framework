@@ -59,27 +59,34 @@ const providerStateHandlers: Record<string, () => Promise<Record<string, string>
     const { id: customerId, accounts } = await getDemoCustomer();
     const fromAccount = accounts[0];
     const toAccount = await openAccount(customerId, 0, fromAccount.id);
-    return {
+    const params = {
       customerId: String(customerId),
       fromAccountId: String(fromAccount.id),
       toAccountId: String(toAccount.id),
     };
+    console.log("[state] customer with two accounts →", params);
+    return params;
   },
 
   "customer 12345 exists with two accounts": async () => {
     await initDB();
     const { id: customerId, accounts } = await getDemoCustomer();
     await openAccount(customerId, 1, accounts[0].id);
-    return { customerId: String(customerId) };
+    const params = { customerId: String(customerId) };
+    console.log("[state] customer exists →", params);
+    return params;
   },
 
   "account 10001 exists": async () => {
     await initDB();
     const { accounts } = await getDemoCustomer();
-    return { fromAccountId: String(accounts[0].id) };
+    const params = { fromAccountId: String(accounts[0].id) };
+    console.log("[state] account exists →", params);
+    return params;
   },
 
   "account 99999 does not exist": async () => {
+    console.log("[state] account does not exist — no setup needed");
     // No setup needed — sequential IDs never reach 99999 in a single test run
   },
 
@@ -89,7 +96,9 @@ const providerStateHandlers: Record<string, () => Promise<Record<string, string>
     const fromAccount = accounts[0];
     const toAccount = await openAccount(customerId, 0, fromAccount.id);
     await transfer(fromAccount.id, toAccount.id, 50);
-    return { accountId: String(fromAccount.id) };
+    const params = { accountId: String(fromAccount.id) };
+    console.log("[state] account with transaction →", params);
+    return params;
   },
 };
 
@@ -107,7 +116,7 @@ describe("ParaBank — Pact provider verification", () => {
         providerVersionBranch: process.env.GIT_BRANCH ?? "main",
         enablePending: true,
         stateHandlers: providerStateHandlers,
-        logLevel: "warn" as const,
+        logLevel: "debug" as const,
       }
     : {
         provider: "parabank",
@@ -117,7 +126,7 @@ describe("ParaBank — Pact provider verification", () => {
           path.resolve(__dirname, "../../../pacts/reporting-service-parabank.json"),
         ],
         stateHandlers: providerStateHandlers,
-        logLevel: "warn" as const,
+        logLevel: "debug" as const,
       };
 
   test("verifies all consumer contracts", async () => {
