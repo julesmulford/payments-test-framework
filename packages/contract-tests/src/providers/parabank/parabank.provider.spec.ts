@@ -2,15 +2,14 @@ import path from "path";
 import type { Request, Response, NextFunction } from "express";
 import { Verifier } from "@pact-foundation/pact";
 
+// PARABANK_BASE_URL includes the /parabank context path, used for state handler fetch calls.
+// PARABANK_HOST is just host:port — the pact paths already start with /parabank/,
+// so the http-proxy target must NOT include /parabank/ or it doubles the prefix.
 const PARABANK_BASE_URL = process.env.PARABANK_BASE_URL ?? "http://localhost:3000/parabank/";
+const PARABANK_HOST = PARABANK_BASE_URL.replace(/\/parabank\/?$/, "").replace(/\/$/, "");
 const PACTFLOW_BROKER_URL = process.env.PACT_BROKER_BASE_URL;
 const PACTFLOW_TOKEN = process.env.PACT_BROKER_TOKEN;
 const GIT_SHA = process.env.GIT_SHA ?? "local";
-
-// Provider state setup — uses native fetch against ParaBank's REST API.
-// Each handler calls initializeDB for a clean, deterministic starting state,
-// then logs in as the seeded demo user (john/demo) to obtain real IDs which
-// are returned as provider state params for fromProviderState matchers.
 
 const BASE = PARABANK_BASE_URL.replace(/\/$/, "");
 
@@ -135,7 +134,7 @@ describe("ParaBank — Pact provider verification", () => {
   const verifierOptions = PACTFLOW_BROKER_URL
     ? {
         provider: "parabank",
-        providerBaseUrl: PARABANK_BASE_URL,
+        providerBaseUrl: PARABANK_HOST,
         pactBrokerUrl: PACTFLOW_BROKER_URL,
         pactBrokerToken: PACTFLOW_TOKEN,
         consumerVersionSelectors: [{ mainBranch: true }, { deployedOrReleased: true }],
@@ -152,7 +151,7 @@ describe("ParaBank — Pact provider verification", () => {
       }
     : {
         provider: "parabank",
-        providerBaseUrl: PARABANK_BASE_URL,
+        providerBaseUrl: PARABANK_HOST,
         pactUrls: [
           path.resolve(__dirname, "../../../pacts/payments-gateway-parabank.json"),
           path.resolve(__dirname, "../../../pacts/reporting-service-parabank.json"),
