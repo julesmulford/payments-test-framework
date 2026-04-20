@@ -1,29 +1,64 @@
 import path from "path";
 import { Verifier } from "@pact-foundation/pact";
-import { request as playwrightRequest } from "@playwright/test";
-import { buildCustomer } from "../../../../shared/src/fixtures/customer.factory";
-import { ParaBankClient } from "../../../../shared/src/client/parabank.client";
 
 const PARABANK_BASE_URL = process.env.PARABANK_BASE_URL ?? "http://localhost:3000/parabank/";
 const PACTFLOW_BROKER_URL = process.env.PACT_BROKER_BASE_URL;
 const PACTFLOW_TOKEN = process.env.PACT_BROKER_TOKEN;
 const GIT_SHA = process.env.GIT_SHA ?? "local";
 
-// Provider state setup — creates the data conditions each consumer interaction requires.
-// Each handler registers a fresh customer so tests are fully isolated, and returns
-// the real IDs as provider state params for fromProviderState matchers in the pacts.
-async function makeClient() {
-  const ctx = await playwrightRequest.newContext({ baseURL: PARABANK_BASE_URL });
-  return { client: new ParaBankClient(ctx), ctx };
+// Provider state setup — uses native fetch against ParaBank's REST API.
+// Each handler calls initializeDB for a clean, deterministic starting state,
+// then logs in as the seeded demo user (john/demo) to obtain real IDs which
+// are returned as provider state params for fromProviderState matchers.
+
+const BASE = PARABANK_BASE_URL.replace(/\/$/, "");
+
+async function initDB(): Promise<void> {
+  const res = await fetch(`${BASE}/services/bank/initializeDB`, { method: "POST" });
+  if (res.status !== 200 && res.status !== 204) {
+    throw new Error(`initializeDB failed: ${res.status}`);
+  }
+}
+
+async function getDemoCustomer(): Promise<{ id: number; accounts: Array<{ id: number; type: number }> }> {
+  const loginRes = await fetch(`${BASE}/services/bank/login/john/demo`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!loginRes.ok) throw new Error(`login failed: ${loginRes.status}`);
+  const customer = await loginRes.json() as { id: number };
+
+  const accountsRes = await fetch(`${BASE}/services/bank/customers/${customer.id}/accounts`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!accountsRes.ok) throw new Error(`getAccounts failed: ${accountsRes.status}`);
+  const accounts = await accountsRes.json() as Array<{ id: number; type: number }>;
+
+  return { id: customer.id, accounts };
+}
+
+async function openAccount(customerId: number, type: 0 | 1, fromAccountId: number): Promise<{ id: number }> {
+  const res = await fetch(
+    `${BASE}/services/bank/createAccount?customerId=${customerId}&newAccountType=${type}&fromAccountId=${fromAccountId}`,
+    { method: "POST", headers: { Accept: "application/json" } }
+  );
+  if (!res.ok) throw new Error(`openAccount failed: ${res.status}`);
+  return res.json() as Promise<{ id: number }>;
+}
+
+async function transfer(fromAccountId: number, toAccountId: number, amount: number): Promise<void> {
+  const res = await fetch(
+    `${BASE}/services/bank/transfer?fromAccountId=${fromAccountId}&toAccountId=${toAccountId}&amount=${amount}`,
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(`transfer failed: ${res.status}`);
 }
 
 const providerStateHandlers: Record<string, () => Promise<Record<string, string> | void>> = {
   "customer 12345 has accounts 10001 and 10002 with sufficient balance": async () => {
-    const { client, ctx } = await makeClient();
-    const customerId = await client.register(buildCustomer());
-    const [fromAccount] = await client.getAccounts(customerId);
-    const toAccount = await client.openAccount(customerId, 0, fromAccount.id);
-    await ctx.dispose();
+    await initDB();
+    const { id: customerId, accounts } = await getDemoCustomer();
+    const fromAccount = accounts[0];
+    const toAccount = await openAccount(customerId, 0, fromAccount.id);
     return {
       customerId: String(customerId),
       fromAccountId: String(fromAccount.id),
@@ -32,33 +67,28 @@ const providerStateHandlers: Record<string, () => Promise<Record<string, string>
   },
 
   "customer 12345 exists with two accounts": async () => {
-    const { client, ctx } = await makeClient();
-    const customerId = await client.register(buildCustomer());
-    const [firstAccount] = await client.getAccounts(customerId);
-    await client.openAccount(customerId, 1, firstAccount.id);
-    await ctx.dispose();
+    await initDB();
+    const { id: customerId, accounts } = await getDemoCustomer();
+    await openAccount(customerId, 1, accounts[0].id);
     return { customerId: String(customerId) };
   },
 
   "account 10001 exists": async () => {
-    const { client, ctx } = await makeClient();
-    const customerId = await client.register(buildCustomer());
-    const [account] = await client.getAccounts(customerId);
-    await ctx.dispose();
-    return { fromAccountId: String(account.id) };
+    await initDB();
+    const { accounts } = await getDemoCustomer();
+    return { fromAccountId: String(accounts[0].id) };
   },
 
   "account 99999 does not exist": async () => {
-    // No setup — ParaBank's sequential IDs never reach 99999 in a single test run
+    // No setup needed — sequential IDs never reach 99999 in a single test run
   },
 
   "account 10001 has at least one transaction": async () => {
-    const { client, ctx } = await makeClient();
-    const customerId = await client.register(buildCustomer());
-    const [fromAccount] = await client.getAccounts(customerId);
-    const toAccount = await client.openAccount(customerId, 0, fromAccount.id);
-    await client.transfer(fromAccount.id, toAccount.id, 50);
-    await ctx.dispose();
+    await initDB();
+    const { id: customerId, accounts } = await getDemoCustomer();
+    const fromAccount = accounts[0];
+    const toAccount = await openAccount(customerId, 0, fromAccount.id);
+    await transfer(fromAccount.id, toAccount.id, 50);
     return { accountId: String(fromAccount.id) };
   },
 };
