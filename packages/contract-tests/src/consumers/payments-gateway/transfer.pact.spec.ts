@@ -59,7 +59,7 @@ describe("payments-gateway → parabank: accounts contract", () => {
         body: eachLike({
           id: integer(10001),
           customerId: integer(12345),
-          type: integer(1),
+          type: string("CHECKING"),
           balance: decimal(1000.0),
         }),
       })
@@ -93,7 +93,7 @@ describe("payments-gateway → parabank: accounts contract", () => {
         body: {
           id: integer(10001),
           customerId: integer(12345),
-          type: integer(1),
+          type: string("CHECKING"),
           balance: decimal(1000.0),
         },
       })
