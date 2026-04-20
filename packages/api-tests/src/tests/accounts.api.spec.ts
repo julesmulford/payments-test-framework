@@ -12,7 +12,7 @@ test.describe("Accounts API", () => {
       expect(typeof account.id).toBe("number");
       expect(typeof account.customerId).toBe("number");
       expect(typeof account.balance).toBe("number");
-      expect([0, 1]).toContain(account.type);
+      expect(["CHECKING", "SAVINGS"]).toContain(account.type);
     }
   });
 
@@ -25,14 +25,14 @@ test.describe("Accounts API", () => {
 
   test("open a savings account — returns type 1", async ({ api }) => {
     const newAccount = await api.client.openAccount(api.customerId, 1, api.savingsAccount.id);
-    expect(newAccount.type).toBe(1);
+    expect(newAccount.type).toBe("SAVINGS");
     expect(newAccount.id).toBeGreaterThan(0);
     expect(newAccount.customerId).toBe(api.customerId);
   });
 
   test("open a checking account — returns type 0", async ({ api }) => {
     const newAccount = await api.client.openAccount(api.customerId, 0, api.savingsAccount.id);
-    expect(newAccount.type).toBe(0);
+    expect(newAccount.type).toBe("CHECKING");
   });
 
   test("newly opened account appears in accounts list", async ({ api }) => {

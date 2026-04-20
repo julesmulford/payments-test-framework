@@ -25,13 +25,13 @@ export interface Account {
   balance: number;
 }
 
-export type AccountType = 0 | 1; // 0 = CHECKING, 1 = SAVINGS
+export type AccountType = "CHECKING" | "SAVINGS";
 
 export interface Transaction {
   id: number;
   accountId: number;
   type: TransactionType;
-  date: string;
+  date: number;
   amount: number;
   description: string;
 }

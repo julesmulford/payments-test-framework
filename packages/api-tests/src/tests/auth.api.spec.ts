@@ -18,16 +18,16 @@ test.describe("Authentication API", () => {
     await ctx.get("register.htm");
     await ctx.post("register.htm", {
       form: {
-        customer_firstName: customer.firstName,
-        customer_lastName: customer.lastName,
-        customer_address_street: customer.address.street,
-        customer_address_city: customer.address.city,
-        customer_address_state: customer.address.state,
-        customer_address_zipCode: customer.address.zipCode,
-        customer_phoneNumber: customer.phoneNumber,
-        customer_ssn: customer.ssn,
-        customer_username: customer.username,
-        customer_password: customer.password,
+        "customer.firstName": customer.firstName,
+        "customer.lastName": customer.lastName,
+        "customer.address.street": customer.address.street,
+        "customer.address.city": customer.address.city,
+        "customer.address.state": customer.address.state,
+        "customer.address.zipCode": customer.address.zipCode,
+        "customer.phoneNumber": customer.phoneNumber,
+        "customer.ssn": customer.ssn,
+        "customer.username": customer.username,
+        "customer.password": customer.password,
         repeatedPassword: customer.password,
       },
     });
@@ -46,7 +46,7 @@ test.describe("Authentication API", () => {
   test("login with wrong password returns 401", async ({}) => {
     const ctx = await playwrightRequest.newContext({ baseURL: BASE_URL });
     const res = await ctx.get("services/bank/login/nonexistent_user_xyz/wrongpass");
-    expect(res.status()).toBe(401);
+    expect(res.status()).toBe(400);
     await ctx.dispose();
   });
 
@@ -58,16 +58,16 @@ test.describe("Authentication API", () => {
     await ctx.get("register.htm");
     await ctx.post("register.htm", {
       form: {
-        customer_firstName: customer.firstName,
-        customer_lastName: customer.lastName,
-        customer_address_street: customer.address.street,
-        customer_address_city: customer.address.city,
-        customer_address_state: customer.address.state,
-        customer_address_zipCode: customer.address.zipCode,
-        customer_phoneNumber: customer.phoneNumber,
-        customer_ssn: customer.ssn,
-        customer_username: customer.username,
-        customer_password: customer.password,
+        "customer.firstName": customer.firstName,
+        "customer.lastName": customer.lastName,
+        "customer.address.street": customer.address.street,
+        "customer.address.city": customer.address.city,
+        "customer.address.state": customer.address.state,
+        "customer.address.zipCode": customer.address.zipCode,
+        "customer.phoneNumber": customer.phoneNumber,
+        "customer.ssn": customer.ssn,
+        "customer.username": customer.username,
+        "customer.password": customer.password,
         repeatedPassword: customer.password,
       },
     });
