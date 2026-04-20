@@ -95,6 +95,23 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/pact-foundation/pact-ruby-standalone/master/install.sh | bash
           echo "$HOME/.pact/bin" >> $GITHUB_PATH
 
+      - name: Ensure production environment exists
+        run: |
+          pact-broker create-environment \
+            --name production \
+            --production \
+            --broker-base-url ${{ secrets.PACT_BROKER_BASE_URL }} \
+            --broker-token ${{ secrets.PACT_BROKER_TOKEN }} || true
+
+      - name: Record parabank deployed to production
+        run: |
+          pact-broker record-deployment \
+            --pacticipant parabank \
+            --version ${{ needs.publish-pacts.outputs.git-sha }} \
+            --environment production \
+            --broker-base-url ${{ secrets.PACT_BROKER_BASE_URL }} \
+            --broker-token ${{ secrets.PACT_BROKER_TOKEN }}
+
       - name: can-i-deploy — payments-gateway
         run: |
           pact-broker can-i-deploy \
