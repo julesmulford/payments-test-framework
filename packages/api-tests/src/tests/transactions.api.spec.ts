@@ -67,8 +67,8 @@ test.describe("Transactions API", () => {
   });
 
   test("new account with no transfers has an opening credit transaction", async ({ api }) => {
-    // The default savings account should have the opening deposit
-    const txns = await api.client.getTransactions(api.savingsAccount.id);
+    // The checking account was opened via openAccount, which seeds it with a Credit transfer
+    const txns = await api.client.getTransactions(api.checkingAccount.id);
     const credit = txns.find((t) => t.type === "Credit");
     expect(credit).toBeDefined();
   });

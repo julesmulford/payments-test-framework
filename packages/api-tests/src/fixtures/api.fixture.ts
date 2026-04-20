@@ -24,7 +24,12 @@ export const test = base.extend<{ api: ApiFixture }>({
     await client.register(customer);
     const { customerId } = await client.login(customer.username, customer.password);
 
-    const allAccounts = await client.getAccounts(customerId);
+    let allAccounts = await client.getAccounts(customerId);
+    // ParaBank occasionally returns empty list immediately after registration — retry once
+    if (allAccounts.length === 0) {
+      allAccounts = await client.getAccounts(customerId);
+    }
+    if (allAccounts.length === 0) throw new Error(`No accounts found for customer ${customerId}`);
     const savingsAccount = allAccounts[0];
     const checkingAccount = await client.openAccount(customerId, 0, savingsAccount.id);
 

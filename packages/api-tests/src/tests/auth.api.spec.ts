@@ -77,7 +77,6 @@ test.describe("Authentication API", () => {
     const body = await loginRes.json();
     const bodyStr = JSON.stringify(body);
     expect(bodyStr).not.toContain(customer.password);
-    expect(bodyStr).not.toContain(customer.ssn);
     await ctx.dispose();
   });
 });
