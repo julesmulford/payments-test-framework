@@ -1,0 +1,15 @@
+{
+  "name": "@payments-framework/api-tests",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "playwright test",
+    "test:report": "playwright show-report"
+  },
+  "dependencies": {
+    "@payments-framework/shared": "*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "typescript": "^5.4.0"
+  }
+}

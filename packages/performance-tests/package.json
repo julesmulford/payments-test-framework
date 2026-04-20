@@ -1,0 +1,16 @@
+{
+  "name": "@payments-framework/performance-tests",
+  "version": "1.0.0",
+  "scripts": {
+    "baseline": "k6 run src/scenarios/baseline-load.ts --out influxdb=http://localhost:8086/k6",
+    "spike": "k6 run src/scenarios/spike-test.ts --out influxdb=http://localhost:8086/k6",
+    "soak": "k6 run src/scenarios/soak-test.ts --out influxdb=http://localhost:8086/k6",
+    "baseline:local": "k6 run src/scenarios/baseline-load.ts",
+    "spike:local": "k6 run src/scenarios/spike-test.ts",
+    "compile": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/k6": "^0.51.0",
+    "typescript": "^5.4.0"
+  }
+}

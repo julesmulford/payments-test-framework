@@ -1,0 +1,122 @@
+{
+  "mappings": [
+    {
+      "name": "transfer-success",
+      "request": {
+        "method": "POST",
+        "urlPathPattern": "/parabank/services/bank/transfer",
+        "queryParameters": {
+          "fromAccountId": { "matches": "\\d+" },
+          "toAccountId": { "matches": "\\d+" },
+          "amount": { "matches": "\\d+(\\.\\d+)?" }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": "Successfully transferred funds"
+      }
+    },
+    {
+      "name": "transfer-insufficient-funds",
+      "request": {
+        "method": "POST",
+        "urlPathPattern": "/parabank/services/bank/transfer",
+        "queryParameters": {
+          "fromAccountId": { "equalTo": "99999" }
+        }
+      },
+      "response": {
+        "status": 500,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "error": "Insufficient funds in account 99999"
+        }
+      }
+    },
+    {
+      "name": "get-accounts-success",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/parabank/services/bank/customers/12345/accounts"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": [
+          { "id": 10001, "customerId": 12345, "type": 1, "balance": 1000.00 },
+          { "id": 10002, "customerId": 12345, "type": 0, "balance": 500.00 }
+        ]
+      }
+    },
+    {
+      "name": "open-account-savings",
+      "request": {
+        "method": "POST",
+        "urlPathPattern": "/parabank/services/bank/createAccount",
+        "queryParameters": {
+          "newAccountType": { "equalTo": "1" }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "id": 10003,
+          "customerId": 12345,
+          "type": 1,
+          "balance": 100.00
+        }
+      }
+    },
+    {
+      "name": "open-account-checking",
+      "request": {
+        "method": "POST",
+        "urlPathPattern": "/parabank/services/bank/createAccount",
+        "queryParameters": {
+          "newAccountType": { "equalTo": "0" }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "id": 10004,
+          "customerId": 12345,
+          "type": 0,
+          "balance": 100.00
+        }
+      }
+    },
+    {
+      "name": "login-success",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/parabank/services/bank/login/testuser/testpass"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "id": 12345,
+          "firstName": "Test",
+          "lastName": "User",
+          "username": "testuser"
+        }
+      }
+    },
+    {
+      "name": "login-invalid",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/parabank/services/bank/login/baduser/badpass"
+      },
+      "response": {
+        "status": 401,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "error": "Invalid credentials" }
+      }
+    }
+  ]
+}

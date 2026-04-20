@@ -1,0 +1,172 @@
+name: Main Gate
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish-pacts:
+    name: Publish Pacts to PactFlow
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      git-sha: ${{ steps.meta.outputs.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Capture git metadata
+        id: meta
+        run: |
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Run Pact consumer tests (regenerate pacts)
+        run: npm run test:contract:consumer
+
+      - name: Publish pacts to PactFlow
+        run: npm run test:contract:publish
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+          GIT_SHA: ${{ steps.meta.outputs.sha }}
+          GIT_BRANCH: ${{ steps.meta.outputs.branch }}
+
+  provider-verification:
+    name: Pact Provider Verification
+    runs-on: ubuntu-latest
+    needs: publish-pacts
+    timeout-minutes: 15
+
+    services:
+      parabank:
+        image: parasoft/parabank
+        ports:
+          - 3000:8080
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/parabank/ || exit 1"
+          --health-interval 15s
+          --health-retries 15
+          --health-start-period 30s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialise ParaBank DB
+        run: bash scripts/init-db.sh
+        env:
+          PARABANK_URL: http://localhost:3000/parabank
+
+      - name: Run provider verification
+        run: npm run test:contract:provider
+        env:
+          PARABANK_BASE_URL: http://localhost:3000/parabank/
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+          PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+          GIT_SHA: ${{ needs.publish-pacts.outputs.git-sha }}
+
+  can-i-deploy:
+    name: Can I Deploy Check
+    runs-on: ubuntu-latest
+    needs: provider-verification
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pact CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/pact-foundation/pact-ruby-standalone/master/install.sh | bash
+          echo "$HOME/.pact/bin" >> $GITHUB_PATH
+
+      - name: can-i-deploy — payments-gateway
+        run: |
+          pact-broker can-i-deploy \
+            --pacticipant payments-gateway \
+            --version ${{ needs.publish-pacts.outputs.git-sha }} \
+            --to-environment production \
+            --broker-base-url ${{ secrets.PACT_BROKER_BASE_URL }} \
+            --broker-token ${{ secrets.PACT_BROKER_TOKEN }}
+
+      - name: can-i-deploy — reporting-service
+        run: |
+          pact-broker can-i-deploy \
+            --pacticipant reporting-service \
+            --version ${{ needs.publish-pacts.outputs.git-sha }} \
+            --to-environment production \
+            --broker-base-url ${{ secrets.PACT_BROKER_BASE_URL }} \
+            --broker-token ${{ secrets.PACT_BROKER_TOKEN }}
+
+  api-integration-tests:
+    name: API Integration Tests
+    runs-on: ubuntu-latest
+    needs: can-i-deploy
+    timeout-minutes: 15
+
+    services:
+      parabank:
+        image: parasoft/parabank
+        ports:
+          - 3000:8080
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/parabank/ || exit 1"
+          --health-interval 15s
+          --health-retries 15
+          --health-start-period 30s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: packages/api-tests
+
+      - name: Initialise ParaBank DB
+        run: bash scripts/init-db.sh
+        env:
+          PARABANK_URL: http://localhost:3000/parabank
+
+      - name: Run API integration tests
+        run: npm run test:api
+        env:
+          PARABANK_BASE_URL: http://localhost:3000/parabank/
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-report
+          path: packages/api-tests/playwright-report/
+
+      - name: Emit DORA deployment event
+        if: success()
+        run: npx ts-node scripts/emit-dora-event.ts
+        env:
+          PIPELINE_STATUS: success
+          GIT_SHA: ${{ github.sha }}
+          GIT_BRANCH: ${{ github.ref_name }}
+          PIPELINE_NAME: main-gate

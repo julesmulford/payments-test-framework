@@ -1,0 +1,122 @@
+name: PR Gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: pr-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-coverage
+          path: packages/unit-tests/coverage/
+
+  component-tests:
+    name: Component Tests (WireMock)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    services:
+      wiremock:
+        image: wiremock/wiremock:3.5.4
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/__admin/health || exit 1"
+          --health-interval 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Load WireMock stubs
+        run: |
+          curl -s -X POST http://localhost:8080/__admin/mappings/import \
+            -H "Content-Type: application/json" \
+            -d @packages/component-tests/src/stubs/parabank-stubs.json
+
+      - name: Run component tests
+        run: npm run test:component
+        env:
+          WIREMOCK_BASE_URL: http://localhost:8080/parabank/
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: component-test-report
+          path: packages/component-tests/playwright-report/
+
+  contract-consumer:
+    name: Pact Consumer Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Pact consumer tests
+        run: npm run test:contract:consumer
+
+      - name: Upload pact files
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-files
+          path: packages/contract-tests/pacts/
+
+  pr-summary:
+    name: PR Gate Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, component-tests, contract-consumer]
+    if: always()
+
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.component-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.contract-consumer.result }}" != "success" ]]; then
+            echo "One or more PR gate checks failed"
+            exit 1
+          fi
+          echo "All PR gate checks passed"

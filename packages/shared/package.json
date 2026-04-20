@@ -1,0 +1,21 @@
+{
+  "name": "@payments-framework/shared",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.44.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "typescript": "^5.4.0",
+    "@types/uuid": "^9.0.0"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
+  }
+}

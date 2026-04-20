@@ -1,0 +1,29 @@
+{
+  "name": "payments-test-framework",
+  "version": "1.0.0",
+  "description": "BR-DGE style payments test framework targeting ParaBank",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test:unit": "npm run test --workspace=packages/unit-tests",
+    "test:component": "npm run test --workspace=packages/component-tests",
+    "test:api": "npm run test --workspace=packages/api-tests",
+    "test:contract:consumer": "npm run test:consumer --workspace=packages/contract-tests",
+    "test:contract:provider": "npm run test:provider --workspace=packages/contract-tests",
+    "test:contract:publish": "npm run publish --workspace=packages/contract-tests",
+    "test:kafka": "npm run test --workspace=packages/kafka-tests",
+    "test:e2e": "npm run test --workspace=packages/e2e-tests",
+    "test:perf:baseline": "npm run baseline --workspace=packages/performance-tests",
+    "test:perf:spike": "npm run spike --workspace=packages/performance-tests",
+    "test:ci:pr": "npm run test:unit && npm run test:component && npm run test:contract:consumer",
+    "test:ci:main": "npm run test:contract:publish && npm run test:contract:provider && npm run test:api",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down -v",
+    "docker:init-db": "bash scripts/init-db.sh"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
