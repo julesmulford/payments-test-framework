@@ -84,7 +84,7 @@ jobs:
   can-i-deploy:
     name: Can I Deploy Check
     runs-on: ubuntu-latest
-    needs: provider-verification
+    needs: [publish-pacts, provider-verification]
     timeout-minutes: 5
 
     steps:
