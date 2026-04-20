@@ -26,17 +26,26 @@ test.describe("Bill Pay API", () => {
   test("bill pay with zero amount is handled gracefully", async ({ api }) => {
     const billPayReq = buildBillPayRequest(api.savingsAccount.id, { amount: 0 });
     const ctx = (api.client as any).request;
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      "<payee>",
+      `  <name>${billPayReq.payeeName}</name>`,
+      "  <address>",
+      `    <street>${billPayReq.address.street}</street>`,
+      `    <city>${billPayReq.address.city}</city>`,
+      `    <state>${billPayReq.address.state}</state>`,
+      `    <zipCode>${billPayReq.address.zipCode}</zipCode>`,
+      "  </address>",
+      `  <phoneNumber>${billPayReq.phoneNumber}</phoneNumber>`,
+      `  <accountNumber>${billPayReq.accountNumber}</accountNumber>`,
+      `  <routingNumber>${billPayReq.routingNumber}</routingNumber>`,
+      "</payee>",
+    ].join("\n");
     const res = await ctx.post(
       `services/bank/billpay?accountId=${billPayReq.fromAccountId}&amount=0`,
       {
-        data: {
-          name: billPayReq.payeeName,
-          address: billPayReq.address,
-          phoneNumber: billPayReq.phoneNumber,
-          accountNumber: billPayReq.accountNumber,
-          routingNumber: billPayReq.routingNumber,
-        },
-        headers: { "Content-Type": "application/json" },
+        data: xml,
+        headers: { "Content-Type": "application/xml" },
       }
     );
     // Should return an error — 400 or 500

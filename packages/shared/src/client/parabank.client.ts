@@ -117,17 +117,27 @@ export class ParaBankClient {
   // ── Bill Pay ──────────────────────────────────────────────────────────────
 
   async billPay(customerId: number, req: BillPayRequest): Promise<void> {
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      "<payee>",
+      `  <name>${req.payeeName}</name>`,
+      "  <address>",
+      `    <street>${req.address.street}</street>`,
+      `    <city>${req.address.city}</city>`,
+      `    <state>${req.address.state}</state>`,
+      `    <zipCode>${req.address.zipCode}</zipCode>`,
+      "  </address>",
+      `  <phoneNumber>${req.phoneNumber}</phoneNumber>`,
+      `  <accountNumber>${req.accountNumber}</accountNumber>`,
+      `  <routingNumber>${req.routingNumber}</routingNumber>`,
+      "</payee>",
+    ].join("\n");
+
     const res = await this.request.post(
       `${BANK}/billpay?accountId=${req.fromAccountId}&amount=${req.amount}`,
       {
-        data: {
-          name: req.payeeName,
-          address: req.address,
-          phoneNumber: req.phoneNumber,
-          accountNumber: req.accountNumber,
-          routingNumber: req.routingNumber,
-        },
-        headers: { "Content-Type": "application/json" },
+        data: xml,
+        headers: { "Content-Type": "application/xml" },
       }
     );
     expect(res.status(), "bill pay failed").toBe(200);

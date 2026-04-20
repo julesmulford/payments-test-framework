@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./src/tests",
   timeout: 30_000,
   retries: 1,
-  workers: 4,
+  workers: 2,
   reporter: [
     ["list"],
     ["html", { open: "never", outputFolder: "playwright-report" }],
