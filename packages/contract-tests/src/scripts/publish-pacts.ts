@@ -10,11 +10,13 @@ if (!brokerUrl || !brokerToken) {
   process.exit(1);
 }
 
-let gitSha = "local";
+let gitSha = `local-${Date.now()}`;
 try {
-  gitSha = execSync("git rev-parse --short HEAD").toString().trim();
+  const sha = execSync("git rev-parse --short HEAD").toString().trim();
+  const dirty = execSync("git status --porcelain").toString().trim();
+  gitSha = dirty ? `${sha}-dirty` : sha;
 } catch {
-  console.warn("Could not read git SHA — using 'local'");
+  console.warn("Could not read git SHA — using timestamped local version");
 }
 
 const publisher = new Publisher({

@@ -1,7 +1,7 @@
 import path from "path";
 import { PactV3, MatchersV3 } from "@pact-foundation/pact";
 
-const { like, integer, decimal, string, eachLike } = MatchersV3;
+const { like, integer, decimal, string, eachLike, fromProviderState } = MatchersV3;
 
 const provider = new PactV3({
   consumer: "payments-gateway",
@@ -21,8 +21,8 @@ describe("payments-gateway → parabank: transfer contract", () => {
         method: "POST",
         path: "/parabank/services/bank/transfer",
         query: {
-          fromAccountId: "10001",
-          toAccountId: "10002",
+          fromAccountId: fromProviderState("${fromAccountId}", "10001"),
+          toAccountId: fromProviderState("${toAccountId}", "10002"),
           amount: "100",
         },
       })
@@ -48,7 +48,10 @@ describe("payments-gateway → parabank: accounts contract", () => {
       .uponReceiving("a request to list accounts for customer 12345")
       .withRequest({
         method: "GET",
-        path: "/parabank/services/bank/customers/12345/accounts",
+        path: fromProviderState(
+          "/parabank/services/bank/customers/${customerId}/accounts",
+          "/parabank/services/bank/customers/12345/accounts"
+        ),
       })
       .willRespondWith({
         status: 200,
@@ -79,7 +82,10 @@ describe("payments-gateway → parabank: accounts contract", () => {
       .uponReceiving("a request to get account 10001")
       .withRequest({
         method: "GET",
-        path: "/parabank/services/bank/accounts/10001",
+        path: fromProviderState(
+          "/parabank/services/bank/accounts/${fromAccountId}",
+          "/parabank/services/bank/accounts/10001"
+        ),
       })
       .willRespondWith({
         status: 200,

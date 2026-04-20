@@ -9,29 +9,57 @@ const PACTFLOW_BROKER_URL = process.env.PACT_BROKER_BASE_URL;
 const PACTFLOW_TOKEN = process.env.PACT_BROKER_TOKEN;
 const GIT_SHA = process.env.GIT_SHA ?? "local";
 
-// Provider state setup — creates the data conditions each consumer interaction requires
-const providerStateHandlers: Record<string, () => Promise<void>> = {
+// Provider state setup — creates the data conditions each consumer interaction requires.
+// Each handler registers a fresh customer so tests are fully isolated, and returns
+// the real IDs as provider state params for fromProviderState matchers in the pacts.
+async function makeClient() {
+  const ctx = await playwrightRequest.newContext({ baseURL: PARABANK_BASE_URL });
+  return { client: new ParaBankClient(ctx), ctx };
+}
+
+const providerStateHandlers: Record<string, () => Promise<Record<string, string> | void>> = {
   "customer 12345 has accounts 10001 and 10002 with sufficient balance": async () => {
-    // In a real system this would seed the DB via a test endpoint.
-    // ParaBank doesn't expose a provider-state endpoint, so we use the API
-    // to create a fresh customer and note that Pact's mock will handle the actual response.
-    // For local pact file verification, state setup is informational.
+    const { client, ctx } = await makeClient();
+    const customerId = await client.register(buildCustomer());
+    const [fromAccount] = await client.getAccounts(customerId);
+    const toAccount = await client.openAccount(customerId, 0, fromAccount.id);
+    await ctx.dispose();
+    return {
+      customerId: String(customerId),
+      fromAccountId: String(fromAccount.id),
+      toAccountId: String(toAccount.id),
+    };
   },
 
   "customer 12345 exists with two accounts": async () => {
-    // State acknowledged — Pact mock handles response verification
+    const { client, ctx } = await makeClient();
+    const customerId = await client.register(buildCustomer());
+    const [firstAccount] = await client.getAccounts(customerId);
+    await client.openAccount(customerId, 1, firstAccount.id);
+    await ctx.dispose();
+    return { customerId: String(customerId) };
   },
 
-  "account 10001 exists": async () => {},
+  "account 10001 exists": async () => {
+    const { client, ctx } = await makeClient();
+    const customerId = await client.register(buildCustomer());
+    const [account] = await client.getAccounts(customerId);
+    await ctx.dispose();
+    return { fromAccountId: String(account.id) };
+  },
 
-  "account 99999 does not exist": async () => {},
+  "account 99999 does not exist": async () => {
+    // No setup — ParaBank's sequential IDs never reach 99999 in a single test run
+  },
 
   "account 10001 has at least one transaction": async () => {
-    // For real provider verification against a live ParaBank, we would:
-    // 1. Register a fresh customer
-    // 2. Make a transfer to seed a transaction
-    // 3. Map their real account ID to the one in the contract
-    // This is the argument for provider state endpoints on real services.
+    const { client, ctx } = await makeClient();
+    const customerId = await client.register(buildCustomer());
+    const [fromAccount] = await client.getAccounts(customerId);
+    const toAccount = await client.openAccount(customerId, 0, fromAccount.id);
+    await client.transfer(fromAccount.id, toAccount.id, 50);
+    await ctx.dispose();
+    return { accountId: String(fromAccount.id) };
   },
 };
 

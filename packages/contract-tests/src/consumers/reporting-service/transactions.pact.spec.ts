@@ -1,7 +1,7 @@
 import path from "path";
 import { PactV3, MatchersV3 } from "@pact-foundation/pact";
 
-const { like, integer, decimal, string, eachLike } = MatchersV3;
+const { like, integer, decimal, string, eachLike, fromProviderState } = MatchersV3;
 
 const provider = new PactV3({
   consumer: "reporting-service",
@@ -17,7 +17,10 @@ describe("reporting-service → parabank: transaction contract", () => {
       .uponReceiving("a request to retrieve transactions for account 10001")
       .withRequest({
         method: "GET",
-        path: "/parabank/services/bank/accounts/10001/transactions",
+        path: fromProviderState(
+          "/parabank/services/bank/accounts/${accountId}/transactions",
+          "/parabank/services/bank/accounts/10001/transactions"
+        ),
       })
       .willRespondWith({
         status: 200,
@@ -56,7 +59,10 @@ describe("reporting-service → parabank: transaction contract", () => {
       .uponReceiving("a request to validate transaction types for reporting")
       .withRequest({
         method: "GET",
-        path: "/parabank/services/bank/accounts/10001/transactions",
+        path: fromProviderState(
+          "/parabank/services/bank/accounts/${accountId}/transactions",
+          "/parabank/services/bank/accounts/10001/transactions"
+        ),
       })
       .willRespondWith({
         status: 200,
