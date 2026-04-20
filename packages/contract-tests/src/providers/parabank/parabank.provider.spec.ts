@@ -1,8 +1,8 @@
 import path from "path";
 import { Verifier } from "@pact-foundation/pact";
 import { request as playwrightRequest } from "@playwright/test";
-import { buildCustomer } from "../../../shared/src/fixtures/customer.factory";
-import { ParaBankClient } from "../../../shared/src/client/parabank.client";
+import { buildCustomer } from "../../../../shared/src/fixtures/customer.factory";
+import { ParaBankClient } from "../../../../shared/src/client/parabank.client";
 
 const PARABANK_BASE_URL = process.env.PARABANK_BASE_URL ?? "http://localhost:3000/parabank/";
 const PACTFLOW_BROKER_URL = process.env.PACT_BROKER_BASE_URL;
